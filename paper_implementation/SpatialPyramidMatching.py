@@ -17,7 +17,7 @@ class SpatialPyramidMatching:
         return ny * window_size + nx
     
     @staticmethod
-    def get_spatial_pyramid(descriptors, kp, image_sizes, clusters, L=3, M=200):
+    def get_spatial_pyramid(descriptors, kp, image_sizes, visual_vocabs, L=3, M=200):
         """
         Transforms the images into spatial pyramid
         """
@@ -36,8 +36,8 @@ class SpatialPyramidMatching:
                 channels_kp = {}
                 width, height = image_sizes[des][idx]
 
-                # Get K-means prediction of current image descriptor
-                predictions = clusters.predict(descriptor)
+                # Get K-means prediction of current image descriptor based on the generated visual vocabularies
+                predictions = visual_vocabs.predict(descriptor)
 
                 for pred_idx, prediction in enumerate(predictions):
                     if prediction not in channels:
@@ -52,15 +52,14 @@ class SpatialPyramidMatching:
                         result_vector += [0] * sigma_L
                         continue
                     for l in range(L + 1):
-                        w = 1 / (2 ** min((L - l + 1), L))
+                        w = 1 / (2 ** (L - l + 1))
 
                         # Define histogram
                         hist = [0] * (4 ** l)
 
                         # Fill the histogram
                         for position in channels_kp[channel]:
-                            x = position[0]
-                            y = position[1]
+                            x, y = position
                             # Get the grid location of (x,y) position in image
                             grid = SpatialPyramidMatching.get_grid(l, x, y, width, height)
                             try:

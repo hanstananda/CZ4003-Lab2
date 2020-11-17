@@ -13,7 +13,7 @@ categories = os.listdir(images_path)
 num_train = 5
 num_test = 10
 # Number of categories to be used
-num_cat = 10
+num_cat = 100
 
 train_descriptors = dict()
 test_descriptors = dict()
@@ -63,16 +63,16 @@ features = np.array(features)
 # print(features)
 
 # Set visual vocabulary size, 200 is used in Table 2 as strong features
-M = 10
+M = 200
 clusters = KMeans(n_clusters=M)
 clusters.fit(features)
 print("Clustering completed!")
 
 # Set the level L
-for L in range(3):
+for L in range(4):
     print("Starting building level {}".format(L))
     X_train, Y_train = SpatialPyramidMatching.get_spatial_pyramid(train_descriptors, train_kp, train_img_sizes, clusters, L, M)
-    X_test, Y_test = SpatialPyramidMatching.get_spatial_pyramid(train_descriptors, train_kp, train_img_sizes, clusters, L, M)
+    X_test, Y_test = SpatialPyramidMatching.get_spatial_pyramid(test_descriptors, test_kp, test_img_sizes, clusters, L, M)
     model = LinearSVC()
     model.fit(X_train, Y_train)
-    print("Level {} result: {}".format(L, accuracy_score(Y_test, model.predict(X_test))))
+    print("Level {} accuracy result: {}".format(L, accuracy_score(Y_test, model.predict(X_test))))
