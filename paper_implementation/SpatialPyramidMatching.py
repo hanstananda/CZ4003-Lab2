@@ -16,62 +16,66 @@ class SpatialPyramidMatching:
 
         return ny * window_size + nx
     
-    def __init__(self, descriptors, kp, image_sizes, clusters, L=3, M=200):
-        self.features = []
-        self.labels = []
+    @staticmethod
+    def get_spatial_pyramid(descriptors, kp, image_sizes, clusters, L=3, M=200):
+        """
+        Transforms the images into spatial pyramid
+        """
+        X = []
+        Y = []
+
         for des in descriptors:
             for idx, descriptor in enumerate(descriptors[des]):
+                sigma_L = (-1 + 4 ** (L + 1)) // 3
                 if descriptor is None:
-                    self.features.append([0 for i in range((M * (-1 + 4 ** (L + 1))) // 3)])
-                    self.labels.append(des)
+                    X.append([0]* (M * sigma_L))
+                    Y.append(des)
                     continue
-                v = []
-
+                result_vector = []
                 channels = {}
-                channels_coordinates = {}
-                # width, height = image_sizes[des][idx]
-                cols = image_sizes[des][idx][0]
-                rows = image_sizes[des][idx][1]
+                channels_kp = {}
+                width, height = image_sizes[des][idx]
 
                 # Get K-means prediction of current image descriptor
                 predictions = clusters.predict(descriptor)
 
-                for i, prediction in enumerate(predictions):
+                for pred_idx, prediction in enumerate(predictions):
                     if prediction not in channels:
                         channels[prediction] = []
-                        channels_coordinates[prediction] = []
-                    channels[prediction].append(descriptors[des][idx][i].tolist())
-                    channels_coordinates[prediction].append(kp[des][idx][i])
+                        channels_kp[prediction] = []
+                    channels[prediction].append(descriptors[des][idx][pred_idx].tolist())
+                    channels_kp[prediction].append(kp[des][idx][pred_idx])
 
-                for c in range(M):
-                    if c not in channels:
-                        v += [0 for i in range(((-1 + 4 ** (L + 1))) // 3)]
+                # Iterate through all channel m
+                for channel in range(M):
+                    if channel not in channels:
+                        result_vector += [0] * sigma_L
                         continue
-
                     for l in range(L + 1):
-                        w = 0
+                        w = 1 / (2 ** min((L - l + 1), L))
 
-                        if l == 0:
-                            w = 1 / (1 << L)
-                        else:
-                            w = 1 / (1 << (L - l + 1))
+                        # Define histogram
+                        hist = [0] * (4 ** l)
 
-                        hist = [0 for i in range(4 ** l)]
-
-                        for i in range(len(channels_coordinates[c])):
-                            x = channels_coordinates[c][i][0]
-                            y = channels_coordinates[c][i][1]
-
-                            grid = self.get_grid(l, x, y, cols, rows)
-
-                            hist[grid] += 1
+                        # Fill the histogram
+                        for position in channels_kp[channel]:
+                            x = position[0]
+                            y = position[1]
+                            # Get the grid location of (x,y) position in image
+                            grid = SpatialPyramidMatching.get_grid(l, x, y, width, height)
+                            try:
+                                hist[grid] += 1
+                            except IndexError:
+                                hist[-1] += 1
 
                         hist = [it * w for it in hist]
 
-                        v += hist
+                        result_vector += hist
 
-                self.features.append([it / (((M / 200) * 25) * (1 << L)) for it in v])
-                self.labels.append(des)
+                X.append([it / (((M / 200) * 25) * (2 ** L)) for it in result_vector])
+                Y.append(des)
+        return X, Y
+
 
     @staticmethod
     def get_sift_features(gray_image):
@@ -84,7 +88,4 @@ class SpatialPyramidMatching:
         kp = [i.pt for i in kp]
         return kp, des
 
-    def get_spatial_pyramid(self):
-        # print(self.features)
-        # print(self.labels)
-        return self.features, self.labels
+
