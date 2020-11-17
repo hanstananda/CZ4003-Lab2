@@ -70,20 +70,19 @@ clusters.fit(features)
 print("Clustering completed!")
 
 # Set the level L
-for L in range(2):
+for L in range(3):
     print("Starting building level {}".format(L))
     train_set = SpatialPyramidMatching(train_descriptors, train_kp, train_img_sizes, clusters, L, M)
+    test_set = SpatialPyramidMatching(test_descriptors, test_kp, test_img_sizes, clusters, L, M)
     print("Level train and test set built!")
     X_train, Y_train = train_set.get_spatial_pyramid()
-
-    print(len(X_train), len(Y_train))
-    for X in X_train:
-        print(len(X), end=" ")
-    print()
-
-    test_set = SpatialPyramidMatching(test_descriptors, test_kp, test_img_sizes, clusters, L, M)
     X_test, Y_test = test_set.get_spatial_pyramid()
-    X_test, Y_test = get_spatial_pyramid(train_descriptors, train_kp, train_img_sizes, clusters, L, M)
     model = LinearSVC()
     model.fit(X_train, Y_train)
     print("Level {} result: {}".format(L, accuracy_score(Y_test, model.predict(X_test))))
+
+    X_train1, Y_train1 = get_spatial_pyramid(train_descriptors, train_kp, train_img_sizes, clusters, L, M)
+    X_test1, Y_test1 = get_spatial_pyramid(train_descriptors, train_kp, train_img_sizes, clusters, L, M)
+    model = LinearSVC()
+    model.fit(X_train1, Y_train1)
+    print("Level {} result: {}".format(L, accuracy_score(Y_test1, model.predict(X_test1))))

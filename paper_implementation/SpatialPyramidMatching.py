@@ -8,23 +8,19 @@ class SpatialPyramidMatching:
         """
         Get the specified grid of the images
         """
-        denom = 1 << level
-        nx, ny = 0, 0
-        for numer in range(denom):
-            if (numer / denom) * cols <= x <= ((numer + 1) / denom) * cols:
-                nx = numer
-            if (numer / denom) * rows <= y <= ((numer + 1) / denom) * rows:
-                ny = numer
+        window_size = 2 ** level
+        col_grid_size = cols // window_size
+        row_grid_size = rows // window_size
+        nx = int(x // col_grid_size)
+        ny = int(y // row_grid_size)
 
-        return ny * denom + nx
-
-    def __init__(self, descriptors, kp, image_sizes, clusters, L=2, M=200):
+        return ny * window_size + nx
+    
+    def __init__(self, descriptors, kp, image_sizes, clusters, L=3, M=200):
         self.features = []
         self.labels = []
         for des in descriptors:
-            for idx in range(len(descriptors[des])):
-                descriptor = descriptors[des][idx]
-                print(des, idx)
+            for idx, descriptor in enumerate(descriptors[des]):
                 if descriptor is None:
                     self.features.append([0 for i in range((M * (-1 + 4 ** (L + 1))) // 3)])
                     self.labels.append(des)
@@ -33,7 +29,11 @@ class SpatialPyramidMatching:
 
                 channels = {}
                 channels_coordinates = {}
-                width, height = image_sizes[des][idx]
+                # width, height = image_sizes[des][idx]
+                cols = image_sizes[des][idx][0]
+                rows = image_sizes[des][idx][1]
+
+                # Get K-means prediction of current image descriptor
                 predictions = clusters.predict(descriptor)
 
                 for i, prediction in enumerate(predictions):
@@ -62,7 +62,7 @@ class SpatialPyramidMatching:
                             x = channels_coordinates[c][i][0]
                             y = channels_coordinates[c][i][1]
 
-                            grid = self.get_grid(l, x, y, height, width)
+                            grid = self.get_grid(l, x, y, cols, rows)
 
                             hist[grid] += 1
 
