@@ -14,7 +14,8 @@ categories = os.listdir(images_path)
 # Number of train images and test images used based on paper
 num_train = 5
 num_test = 10
-num_cat = 5
+# Number of categories to be used
+num_cat = 100
 
 train_descriptors = dict()
 test_descriptors = dict()
@@ -24,7 +25,7 @@ train_img_sizes = dict()
 test_img_sizes = dict()
 
 for cat_idx, category in enumerate(categories):
-    if cat_idx >=num_cat:
+    if cat_idx >= num_cat:
         break
     print("Processing category {}".format(category))
     train_descriptors[category] = list()
@@ -39,7 +40,7 @@ for cat_idx, category in enumerate(categories):
     for idx, image_name in enumerate(image_categories):
         if idx >= num_train + num_test:
             break
-        # Load and change to rgb as per paper description
+        # Load and change rgb to grayscale as per paper description
         image = cv.imread(os.path.join(image_category_path, image_name))
         gray = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
         width, height, channels = image.shape
@@ -72,15 +73,6 @@ print("Clustering completed!")
 # Set the level L
 for L in range(3):
     print("Starting building level {}".format(L))
-    train_set = SpatialPyramidMatching(train_descriptors, train_kp, train_img_sizes, clusters, L, M)
-    test_set = SpatialPyramidMatching(test_descriptors, test_kp, test_img_sizes, clusters, L, M)
-    print("Level train and test set built!")
-    X_train, Y_train = train_set.get_spatial_pyramid()
-    X_test, Y_test = test_set.get_spatial_pyramid()
-    model = LinearSVC()
-    model.fit(X_train, Y_train)
-    print("Level {} result: {}".format(L, accuracy_score(Y_test, model.predict(X_test))))
-
     X_train1, Y_train1 = get_spatial_pyramid(train_descriptors, train_kp, train_img_sizes, clusters, L, M)
     X_test1, Y_test1 = get_spatial_pyramid(train_descriptors, train_kp, train_img_sizes, clusters, L, M)
     model = LinearSVC()

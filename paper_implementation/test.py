@@ -11,65 +11,61 @@ def get_grid(level, x, y, cols, rows):
     return ny * window_size + nx
 
 
-def get_spatial_pyramid(descriptions, coordinates, dimensions, clusters, L=3, M=200):
+def get_spatial_pyramid(descriptors, kp, image_sizes, clusters, L=3, M=200):
     """
     Transforms the images into spatial pyramid
     """
     X = []
     Y = []
 
-    for k in descriptions:
-        for idx in range(len(descriptions[k])):
-
-            if descriptions[k][idx] is None:
-                X.append([0 for i in range((M * (-1 + 4 ** (L + 1))) // 3)])
-                Y.append(k)
+    for des in descriptors:
+        for idx, descriptor in enumerate(descriptors[des]):
+            sigma_L = (-1 + 4 ** (L + 1)) // 3
+            if descriptor is None:
+                X.append([0]* (M * sigma_L))
+                Y.append(des)
                 continue
-
-            cols = dimensions[k][idx][0]
-            rows = dimensions[k][idx][1]
-
-            v = []
-
+            result_vector = []
             channels = {}
-            channels_coordinates = {}
+            channels_kp = {}
+            width, height = image_sizes[des][idx]
 
-            preds = clusters.predict(descriptions[k][idx])
+            # Get K-means prediction of current image descriptor
+            predictions = clusters.predict(descriptor)
 
-            for i in range(len(preds)):
-                if preds[i] not in channels:
-                    channels[preds[i]] = []
-                    channels_coordinates[preds[i]] = []
-                channels[preds[i]].append(descriptions[k][idx][i].tolist())
-                channels_coordinates[preds[i]].append(coordinates[k][idx][i])
+            for pred_idx, prediction in enumerate(predictions):
+                if prediction not in channels:
+                    channels[prediction] = []
+                    channels_kp[prediction] = []
+                channels[prediction].append(descriptors[des][idx][pred_idx].tolist())
+                channels_kp[prediction].append(kp[des][idx][pred_idx])
 
-            for c in range(M):
-                if c not in channels:
-                    v += [0 for i in range(((-1 + 4 ** (L + 1))) // 3)]
+            # Iterate through all channel m
+            for channel in range(M):
+                if channel not in channels:
+                    result_vector += [0] * sigma_L
                     continue
-
                 for l in range(L + 1):
-                    w = 0
+                    w = 1 / (2 ** min((L - l + 1), L))
 
-                    if l == 0:
-                        w = 1 / (1 << L)
-                    else:
-                        w = 1 / (1 << (L - l + 1))
+                    # Define histogram
+                    hist = [0] * (4 ** l)
 
-                    hist = [0 for i in range(4 ** l)]
-
-                    for i in range(len(channels_coordinates[c])):
-                        x = channels_coordinates[c][i][0]
-                        y = channels_coordinates[c][i][1]
-
-                        grid = get_grid(l, x, y, cols, rows)
-
-                        hist[grid] += 1
+                    # Fill the histogram
+                    for position in channels_kp[channel]:
+                        x = position[0]
+                        y = position[1]
+                        # Get the grid location of (x,y) position in image
+                        grid = get_grid(l, x, y, width, height)
+                        try:
+                            hist[grid] += 1
+                        except IndexError:
+                            hist[-1] += 1
 
                     hist = [it * w for it in hist]
 
-                    v += hist
+                    result_vector += hist
 
-            X.append([it / (((M / 200) * 25) * (1 << L)) for it in v])
-            Y.append(k)
+            X.append([it / (((M / 200) * 25) * (2 ** L)) for it in result_vector])
+            Y.append(des)
     return X, Y
